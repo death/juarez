@@ -93,7 +93,7 @@
 
 (defparameter *pathname-schema*
   '((blacklisted-p . blacklist)
-    (empty-directory-p . directories)
+    (empty-directory-p . deletable)
     ("avi" . movies)
     ("sub" . subtitles)
     ("rar" . unpackable)
