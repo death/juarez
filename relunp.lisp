@@ -89,6 +89,21 @@
   (setf *blacklist* '()))
 
 
+;;;; Workaround for braindead parts file naming convention
+
+;;; Some stupid groups use file.partXX.rar instead of file.rXX
+
+(defun non-first-part-p (pathname)
+  (when (equalp (pathname-type pathname) "rar")
+    (when-let (pos (search ".part" (pathname-name pathname)))
+      (let ((n (parse-integer (pathname-name pathname)
+                              :start (+ pos 5)
+                              :end (+ pos 7)
+                              :junk-allowed t)))
+        (and (integerp n)
+             (> n 1))))))
+
+
 ;;;; Classification
 
 (defparameter *pathname-schema*
@@ -96,6 +111,7 @@
     (empty-directory-p . deletable)
     ("avi" . movies)
     ("sub" . subtitles)
+    (non-first-part-p . deletable)
     ("rar" . unpackable)
     (("nfo" "sfv") . deletable)))
 
