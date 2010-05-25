@@ -9,6 +9,7 @@
 
 (defpackage #:juarez.prolog
   (:use #:cl)
+  (:nicknames #:prolog)
   (:export
    #:?-
    #:<-

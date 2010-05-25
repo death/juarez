@@ -5,7 +5,7 @@
 (in-package #:juarez)
 
 
-;;;; Generate Prolog database from qto's dump
+;;;; Read data from qto's dump
 
 (defun parse-fields (field-specs string &key (delimiter #\Tab))
   (translate-fields field-specs (split-sequence delimiter string)))
@@ -85,9 +85,12 @@
   (write form :escape t :readably t :pretty nil :stream out)
   (terpri out))
 
+
+;;;; Prolog database
+
 (defun output-facts (facts out)
   (dolist (fact facts)
-    (output-form `(<- ,fact) out)))
+    (output-form `(prolog:<- ,fact) out)))
 
 (defun generate-prolog-facts-db (&key
                                  (input "/home/death/lisp/juarez/data/warehouse.dump")
@@ -109,12 +112,12 @@
           (parse #'parse-scene-access)
           (parse #'parse-torrent-vault))))))
 
-(<- (= ?x ?x))
-(declare-prolog-predicate <)
-(declare-prolog-predicate >)
-(declare-prolog-predicate <=)
-(declare-prolog-predicate >=)
-(declare-prolog-predicate date<=)
-(declare-prolog-predicate /=)
+(prolog:<- (= ?x ?x))
+(prolog:declare-prolog-predicate <)
+(prolog:declare-prolog-predicate >)
+(prolog:declare-prolog-predicate <=)
+(prolog:declare-prolog-predicate >=)
+(prolog:declare-prolog-predicate /=)
+(prolog:declare-prolog-predicate date<=)
 
 (defun date<= (a b) (every #'<= a b))
