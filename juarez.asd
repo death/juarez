@@ -12,7 +12,9 @@
 (asdf:defsystem #:juarez
   :description "Warez tools"
   :depends-on (#:alexandria
+               #:arnesi
                #:cl-fad
+               #:cl-ppcre
                #:constantia
                #:split-sequence)
   :serial t
@@ -21,5 +23,6 @@
    (:file "utils")
    (:file "release-plist")
    (:file "prolog")
+   (:file "triples")
    (:file "database")
    (:file "relunp")))
