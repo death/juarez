@@ -85,6 +85,27 @@
   (write form :escape t :readably t :pretty nil :stream out)
   (terpri out))
 
+(defvar *dump-filename*
+  "/home/death/lisp/juarez/data/warehouse.dump")
+
+(defun map-releases-in-dump (function &optional (input *dump-filename*))
+  (with-open-file (in input :direction :input)
+    (flet ((parse (how)
+             (skip-until-copy in)
+             (loop for line = (read-line in)
+                   while (not (equal line "\\."))
+                   do (with-simple-restart (continue "Skip this line from dump.")
+                        (funcall function (release-facts (funcall how line)))))))
+      (parse #'parse-scene-access)
+      (parse #'parse-torrent-vault))))
+
+(defmacro do-releases-in-dump ((release-var &optional (input '*dump-filename*)) &body forms)
+  `(block nil
+     (map-releases-in-dump
+      (lambda (,release-var)
+        ,@forms)
+      ,input)))
+
 
 ;;;; Prolog database
 
@@ -92,25 +113,14 @@
   (dolist (fact facts)
     (output-form `(prolog:<- ,fact) out)))
 
-(defun generate-prolog-facts-db (&key
-                                 (input "/home/death/lisp/juarez/data/warehouse.dump")
-                                 (output "/home/death/lisp/juarez/data/facts.lisp"))
-  (with-open-file (in input
-                      :direction :input)
-    (with-open-file (out output
-                         :direction :output
-                         :if-exists :supersede
-                         :if-does-not-exist :create)
-      (block done
-        (output-form `(cl:in-package :juarez) out)
-        (flet ((parse (how)
-                 (skip-until-copy in)
-                 (loop for line = (read-line in)
-                       while (not (equal line "\\."))
-                       do (with-simple-restart (continue "Skip this line from dump.")
-                            (output-facts (release-facts (funcall how line)) out)))))
-          (parse #'parse-scene-access)
-          (parse #'parse-torrent-vault))))))
+(defun generate-prolog-facts-db (&key (input *dump-filename*) (output "/home/death/lisp/juarez/data/facts.lisp"))
+  (with-open-file (out output
+                       :direction :output
+                       :if-exists :supersede
+                       :if-does-not-exist :create)
+    (output-form `(cl:in-package :juarez) out)
+    (do-releases-in-dump (release input)
+      (output-facts release out))))
 
 (prolog:<- (= ?x ?x))
 (prolog:declare-prolog-predicate <)
@@ -121,3 +131,25 @@
 (prolog:declare-prolog-predicate date<=)
 
 (defun date<= (a b) (every #'<= a b))
+
+
+;;;; Triples database
+
+(defun add-dump-to-triples (&key (input *dump-filename*) (store triples:*store*) (compact t))
+  (when (null store)
+    (setf store (make-store 'juarez)))
+  (let ((strings (make-hash-table :test 'equal)))
+    (flet ((maybe-intern-string (x)
+             (typecase x
+               (string
+                (or (gethash x strings)
+                    (setf (gethash x strings) x)))
+               (t x))))
+      (do-releases-in-dump (release input)
+        (dolist (fact release)
+          (destructuring-bind (pred sub obj) fact
+            (when compact
+              (setf pred (maybe-intern-string pred))
+              (setf sub (maybe-intern-string sub))
+              (setf obj (maybe-intern-string obj)))
+            (triples:add sub pred obj store)))))))
