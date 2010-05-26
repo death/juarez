@@ -156,7 +156,9 @@
               (setf pred (maybe-intern-string pred))
               (setf sub (maybe-intern-string sub))
               (setf obj (maybe-intern-string obj)))
-            (triples:add sub pred obj store)))))))
+            (triples:add sub pred obj store)
+            (when (zerop (mod (store-num-triples store) 10000))
+              (out (:d (store-num-triples store) :commas t) " triples" (:%)))))))))
 
 (triples:declare-store-predicate date<=)
 
