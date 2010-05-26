@@ -156,3 +156,15 @@
 
 (triples:declare-store-predicate date<=)
 
+(defun find-duplicate-entries (&optional (store triples:*store*))
+  (let ((dups (make-hash-table)))
+    (do-query (((?id1 'raw-name ?raw1)
+                (?id2 'raw-name ?raw1)
+                (?id1 /= ?id2))
+               store)
+      (multiple-value-bind (primary-id secondary-id)
+          (if (gethash ?id1 dups)
+              (values ?id1 ?id2)
+              (values ?id2 ?id1))
+        (pushnew secondary-id (gethash primary-id dups '()))))
+    dups))
