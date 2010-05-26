@@ -28,8 +28,8 @@
   (loop for (s e) in '((0 4) (5 7) (8 10) (11 13) (14 16) (17 19))
         collect (parse-integer string :start s :end e)))
 
-(defun release-facts (release)
-  (with-alist-values ((id name release-date release-size section-name) release)
+(defun release-facts (id release site)
+  (with-alist-values ((name release-date release-size section-name site-id) release)
     `((title ,id ,(getf name :title))
       (raw-name ,id ,(getf name :raw-name))
       (group ,id ,(intern (string-upcase (getf name :group)) :keyword))
@@ -38,7 +38,9 @@
           `((date ,id ,release-date)))
       (size ,id ,release-size)
       ,@(loop for quality in (getf name :properties)
-              collect (list 'property id quality)))))
+              collect (list 'property id quality))
+      (site-id ,id ,site-id)
+      (site ,id ,site))))
 
 (defun parse-scene-access (line)
   (parse-fields
@@ -89,15 +91,17 @@
   "/home/death/lisp/juarez/data/warehouse.dump")
 
 (defun map-releases-in-dump (function &optional (input *dump-filename*))
-  (with-open-file (in input :direction :input)
-    (flet ((parse (how)
-             (skip-until-copy in)
-             (loop for line = (read-line in)
-                   while (not (equal line "\\."))
-                   do (with-simple-restart (continue "Skip this line from dump.")
-                        (funcall function (release-facts (funcall how line)))))))
-      (parse #'parse-scene-access)
-      (parse #'parse-torrent-vault))))
+  (let ((id 0))
+    (with-open-file (in input :direction :input)
+      (flet ((parse (how site)
+               (skip-until-copy in)
+               (loop for line = (read-line in)
+                     while (not (equal line "\\."))
+                     do (with-simple-restart (continue "Skip this line from dump.")
+                          (funcall function (release-facts id (funcall how line) site))
+                          (incf id)))))
+        (parse #'parse-scene-access :scc)
+        (parse #'parse-torrent-vault :tv)))))
 
 (defmacro do-releases-in-dump ((release-var &optional (input '*dump-filename*)) &body forms)
   `(block nil
