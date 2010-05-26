@@ -412,3 +412,12 @@
 (defmacro do-query ((clauses &optional (store '*store*)) &body forms)
   (once-only (store)
     (compile-query clauses '() `(progn ,@forms) store)))
+
+(defun list-store-component (component &optional (store *store*))
+  (hash-table-keys (store-component-table component store)))    
+
+(defun store-component-table (component store)
+  (case component
+    ((:pred pred) (store-pos store))
+    ((:sub sub) (store-spo store))
+    ((:obj obj) (store-osp store))))

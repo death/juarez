@@ -46,7 +46,8 @@
    #:make-rule-triples
    #:declare-triples-predicate
    #:re-match
-   #:do-query))
+   #:do-query
+   #:list-store-component))
 
 (defpackage #:juarez
   (:use #:cl #:constantia #:alexandria #:split-sequence #:juarez.triples)
