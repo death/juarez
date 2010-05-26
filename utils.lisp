@@ -31,3 +31,16 @@
     `(let ,(loop for key in keys
                  collect `(,key (cdr (assoc ',key ,alist))))
        ,@forms)))
+
+(defparameter *size-units*
+  '(tb gb mb kb bytes))
+
+(defun approximate-size (bytes)
+  (loop for unit in *size-units*
+        for one = (expt 1024 (1- (length *size-units*))) then (/ one 1024)
+        when (>= bytes one)
+        return (list (let ((x (/ bytes one)))
+                       (if (integerp x)
+                           x
+                           (float x)))
+                     unit)))
