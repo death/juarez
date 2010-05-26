@@ -44,3 +44,13 @@
                            x
                            (float x)))
                      unit)))
+
+(defun format-date (date &optional (stream *standard-output*))
+  (destructuring-bind (&optional (year 2010) (month 01) (day 01) (hour 00) (minute 00) (second 00)) date
+    (out (:to stream)
+         (:d year :width 4 :pad-char #\0) "-"
+         (:d month :width 2 :pad-char #\0) "-"
+         (:d day :width 2 :pad-char #\0) "T"
+         (:d hour :width 2 :pad-char #\0) ":"
+         (:d minute :width 2 :pad-char #\0) ":"
+         (:d second :width 2 :pad-char #\0))))

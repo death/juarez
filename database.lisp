@@ -153,3 +153,6 @@
               (setf sub (maybe-intern-string sub))
               (setf obj (maybe-intern-string obj)))
             (triples:add sub pred obj store)))))))
+
+(triples:declare-store-predicate date<=)
+
