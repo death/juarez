@@ -44,7 +44,7 @@
    #:inference-rule
    #:rule-queries
    #:make-rule-triples
-   #:declare-triples-predicate
+   #:declare-store-predicate
    #:re-match
    #:do-query
    #:list-store-component))
