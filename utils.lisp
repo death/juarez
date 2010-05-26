@@ -26,10 +26,13 @@
          (or (not whole-string)
              (null (read-char in nil nil))))))
 
-(defmacro with-alist-values ((keys alist) &body forms)
+(defmacro with-alist-values ((keys alist &key keywords) &body forms)
   (once-only (alist)
     `(let ,(loop for key in keys
-                 collect `(,key (cdr (assoc ',key ,alist))))
+                 collect `(,key (cdr (assoc ',(if keywords
+                                                  (as-keyword key)
+                                                  key)
+                                            ,alist))))
        ,@forms)))
 
 (defparameter *size-units*
