@@ -39,6 +39,10 @@
       (size ,id ,release-size)
       ,@(loop for quality in (getf name :properties)
               collect (list 'property id quality))
+      ,@(let ((se (getf name :season-and-episode)))
+          (when (consp se)
+            `((season ,id ,(car se))
+              (episode ,id ,(cadr se)))))
       (site-id ,id ,site-id)
       (site ,id ,site))))
 
