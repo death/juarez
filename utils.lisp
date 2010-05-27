@@ -35,6 +35,12 @@
                                             ,alist))))
        ,@forms)))
 
+(defun alist-values-lister (&rest keys)
+  (lambda (alist)
+    (mapcar (lambda (key)
+              (cdr (assoc key alist :test #'equal)))
+            keys)))
+
 (defparameter *size-units*
   '(tb gb mb kb bytes))
 
