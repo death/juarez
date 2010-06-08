@@ -65,14 +65,15 @@
 (defun request-over-http (json-string)
   "Post a JSON object encoded as string and return the reply."
   (let ((drakma::*ssl-certificate* *jsonrpc-certificate*)
-        (drakma::*ssl-key* *jsonrpc-key*))
+        (drakma::*ssl-key* *jsonrpc-key*)
+        (drakma:*text-content-types* '(("text" . nil)
+                                       ("application" . "json-rpc")))
+        (drakma:*drakma-default-external-format* :utf-8))
     (multiple-value-bind (unparsed-response http-code)
         (drakma:http-request *jsonrpc-uri* :method :post :content json-string)
       (unless (eql http-code 200)
         (error 'jsonrpc-http-error :code http-code))
-      (etypecase unparsed-response
-        (string unparsed-response)
-        (vector (babel:octets-to-string unparsed-response))))))
+      unparsed-response)))
 
 (defun handle-response (response request-id)
   "Handle a JSON method call response, or a list of those."
