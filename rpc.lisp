@@ -40,7 +40,7 @@
 (defgeneric rpc-decode-call-response (rpc-client response id))
 (defgeneric rpc-decode-multicall-response (rpc-client response ids))
 (defgeneric rpc-handle-call-response (rpc-client type value))
-(defgeneric rpc-handle-multicall-response (rpc-client responses))
+(defgeneric rpc-handle-multicall-response (rpc-client response))
 (defgeneric rpc-perform-call (rpc-client call))
 (defgeneric rpc-perform-multicall (rpc-client calls))
 
@@ -168,8 +168,8 @@
 (defmethod rpc-handle-call-response ((client basic-rpc-client) (type (eql :result)) value)
   value)
 
-(defmethod rpc-handle-multicall-response ((client basic-rpc-client) responses)
-  (loop for (type value) in responses
+(defmethod rpc-handle-multicall-response ((client basic-rpc-client) response)
+  (loop for (type value) in response
         collect (rpc-handle-call-response client type value)))
 
 (defmethod rpc-perform-call ((client basic-rpc-client) call)
