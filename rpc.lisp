@@ -24,8 +24,8 @@
 ;;;; Calls
 
 (defclass rpc-call ()
-  ((method-name :initarg :method-name :accessor rpc-call-method-name)
-   (method-args :initarg :method-args :accessor rpc-call-method-args)))
+  ((method-name :initarg :method-name :reader rpc-call-method-name)
+   (method-args :initarg :method-args :reader rpc-call-method-args)))
 
 
 ;;;; Client protocol
@@ -101,7 +101,6 @@
   ())
 
 (defun make-call-json (call id)
-  (check-type (rpc-call-method-name call) string)
   (list (cons 'jsonrpc "2.0")
         (cons 'id id)
         (cons 'method (rpc-call-method-name call))
