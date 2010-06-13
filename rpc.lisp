@@ -11,14 +11,24 @@
   ((client :initarg :client :reader rpc-client-error-client)))
 
 (define-condition rpc-client-http-error (rpc-client-error)
-  ((code :initarg :code :reader rpc-client-http-error-code)))
+  ((code :initarg :code :reader rpc-client-http-error-code))
+  (:report (lambda (e s)
+             (format s "RPC client HTTP error: ~A"
+                     (rpc-client-http-error-code e)))))
 
 (define-condition rpc-client-id-mismatch (rpc-client-error)
   ((actual-id :initarg :actual-id :reader rpc-client-id-mismatch-actual-id)
-   (expected-id :initarg :expected-id :reader rpc-client-id-mismatch-expected-id)))
+   (expected-id :initarg :expected-id :reader rpc-client-id-mismatch-expected-id))
+  (:report (lambda (e s)
+             (format s "RPC client ID mismatch:~%  Expected ID: ~A~%  Actual ID: ~A"
+                     (rpc-client-id-mismatch-expected-id e)
+                     (rpc-client-id-mismatch-actual-id e)))))
 
 (define-condition rpc-client-call-error (rpc-client-error)
-  ((info :initarg :info :reader rpc-client-call-error-info)))
+  ((info :initarg :info :reader rpc-client-call-error-info))
+  (:report (lambda (e s)
+             (format s "RPC call failed: ~A"
+                     (rpc-client-call-error-info e)))))
 
 
 ;;;; Calls
