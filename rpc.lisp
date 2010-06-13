@@ -143,12 +143,16 @@
         (with-simple-restart (,restart-name ,format-string ,@format-arguments)
           (return-from ,block-name ,@forms))))))
 
-(defmethod rpc-request-response :around ((client rpc-client-retrying-mixin) content)
-  (with-retry-restart (rpc-retry-request "Retry RPC request.")
+(defmethod rpc-perform-call :around ((client rpc-client-retrying-mixin) call)
+  (with-retry-restart (rpc-retry-call "Retry RPC call.")
     (call-next-method)))
 
-(defun rpc-retry-request (&optional condition)
-  (let ((restart (find-restart 'rpc-retry-request condition)))
+(defmethod rpc-perform-multicall :around ((client rpc-client-retrying-mixin) calls)
+  (with-retry-restart (rpc-retry-call "Retry RPC calls.")
+    (call-next-method)))
+
+(defun rpc-retry-call (&optional condition)
+  (let ((restart (find-restart 'rpc-retry-call condition)))
     (when restart
       (invoke-restart restart))))
 
