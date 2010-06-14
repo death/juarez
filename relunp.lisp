@@ -74,6 +74,12 @@
 (defun same-directory-p (pathname1 pathname2)
   (equalp (just-directory pathname1) (just-directory pathname2)))
 
+(defun delete-whatever (pathname)
+  (cond ((fad:directory-pathname-p pathname)
+         (fad:delete-directory-and-files pathname :if-does-not-exist :ignore))
+        ((fad:file-exists-p pathname)
+         (delete-file pathname))))
+
 
 ;;;; Pathname blacklisting
 
@@ -87,6 +93,11 @@
 
 (defun clear-blacklist ()
   (setf *blacklist* '()))
+
+(defun delete-blacklisted ()
+  (dolist (pathname *blacklist*)
+    (delete-whatever pathname))
+  (clear-blacklist))
 
 
 ;;;; Workaround for braindead parts file naming convention
