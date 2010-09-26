@@ -218,6 +218,11 @@
 (define-rpc-method get-notifications-count () "getNotificationCount")
 (define-rpc-method get-old-notifications (start end) "getOldNotifications")
 (define-rpc-method generate-notification (type content) "generateNotification")
+(define-rpc-method get-torrents () "getTorrents")
+(define-rpc-method download-torrent-by-id (site id) "downloadTorrentById")
+(define-rpc-method get-site-statistics (site) "getSiteStatistics")
+(define-rpc-method search-release (query) "search")
+(define-rpc-method search-release-re (query) "regexSearch")
 
 
 ;;;; Warehouse notification client

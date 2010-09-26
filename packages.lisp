@@ -130,6 +130,11 @@
    #:get-notifications-count
    #:get-old-notifications
    #:generate-notification
+   #:get-torrents
+   #:download-torrent-by-id
+   #:get-site-statistics
+   #:search-release
+   #:search-release-re
    #:make-warehouse-notification-client))
   
 (defpackage #:juarez
