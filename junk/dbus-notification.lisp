@@ -5,7 +5,7 @@
     (dbus:with-open-bus (bus (dbus:session-server-addresses))
       (dbus:with-introspected-object (notifications bus "/org/freedesktop/Notifications" "org.freedesktop.Notifications")
         (notifications "org.freedesktop.Notifications" "Notify"
-                       "lul" 0 "" "You've Got Warez"
+                       "lul" 0 "/home/death/lisp/juarez/data/BigEyes-Creature-icon.png" "You've Got Warez"
                        (format nil "~A ~A"
                                (assoc-value (notification-content notification) :name)
                                (notification-type notification))
