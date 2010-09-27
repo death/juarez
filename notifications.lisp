@@ -159,8 +159,7 @@
 
 (setf (find-message-parser "error")
       (lambda (error)
-        (make-instance 'error-message
-                       :error error)))
+        (make-instance 'error-message :error error)))
 
 (defclass notification-message (message)
   ((time :initarg :time :reader notification-time)
@@ -180,12 +179,22 @@
 
 (defgeneric interpret-reply (message))
 
+(define-condition notification-client-error (error)
+  ((message :initarg :message :reader notification-client-error-message))
+  (:report report-notification-client-error))
+
+(defun report-notification-client-error (error stream)
+  (format stream "Notification client error: ~S." (notification-client-error-message error)))
+
 (defmethod interpret-reply ((message error-message))
-  (error "RPC error: ~S." (message-error message)))
+  (error 'notification-client-error :message (message-error message)))
+
+(define-condition notification-client-method-error (notification-client-error)
+  ())
 
 (defmethod interpret-reply ((message result-message))
   (when (message-error message)
-    (error "Method signaled an error: ~S." (message-error message)))
+    (error 'notification-client-method-error :message (message-error message)))
   (message-result message))
 
 (defmethod notification-client-rpc (id method-json (client basic-notification-client))

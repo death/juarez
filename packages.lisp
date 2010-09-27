@@ -139,6 +139,9 @@
    #:notification-time
    #:notification-type
    #:notification-content
+   #:notification-client-error
+   #:notification-client-error-message
+   #:notification-client-method-error
    #:get-new-notifications
    #:get-notifications-count
    #:get-old-notifications
