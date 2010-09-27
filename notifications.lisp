@@ -209,7 +209,8 @@
 ;;;; RPC methods for notifications
 
 (defmacro define-rpc-method (lisp-name arglist original-name)
-  (with-gensyms (client id)
+  (let ((client (make-symbol "CLIENT"))
+        (id (gensym "ID")))
     `(defun ,lisp-name (,client ,@arglist)
        (let ((,id (grab-notification-client-rpc-id ,client)))
          (notification-client-rpc
