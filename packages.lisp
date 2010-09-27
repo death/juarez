@@ -7,6 +7,17 @@
 
 ;;;; Package definitions
 
+(defpackage #:juarez.utils
+  (:use #:cl #:alexandria #:constantia)
+  (:export
+   #:keywordify-words
+   #:keywordify
+   #:char-match
+   #:with-alist-values
+   #:alist-values-lister
+   #:approximate-size
+   #:format-date))
+
 (defpackage #:juarez.prolog
   (:use #:cl)
   (:nicknames #:prolog)
@@ -51,6 +62,7 @@
 
 (defpackage #:juarez.rpc
   (:use #:cl)
+  (:import-from #:juarez.utils #:with-alist-values)
   (:export
    ;; Error stuff
    #:rpc-client-error
@@ -106,6 +118,7 @@
   (:import-from #:cl+ssl #:make-ssl-client-stream)
   (:import-from #:json #:decode-json-from-string #:encode-json-to-string)
   (:import-from #:babel #:octets-to-string #:string-to-octets #:string-size-in-octets)
+  (:import-from #:juarez.utils #:with-alist-values)
   (:export
    #:notification-client
    #:notification-client-host
@@ -138,7 +151,7 @@
    #:make-warehouse-notification-client))
   
 (defpackage #:juarez
-  (:use #:cl #:constantia #:alexandria #:split-sequence #:juarez.triples #:juarez.rpc #:juarez.notifications)
+  (:use #:cl #:constantia #:alexandria #:split-sequence #:juarez.utils #:juarez.triples #:juarez.rpc #:juarez.notifications)
   (:export
    #:release-plist
    #:relunp))

@@ -125,7 +125,7 @@
   (json:encode-json-to-string (mapcar #'make-call-json calls ids)))
 
 (defun make-call-response (client json call-id)
-  (juarez::with-alist-values ((id error result) json :keywords t)
+  (with-alist-values ((id error result) json :keywords t)
     (unless (eql id call-id)
       (error 'rpc-client-id-mismatch :client client :expected-id call-id :actual-id id))
     (if error

@@ -2,7 +2,7 @@
 ;;;; | JUAREZ - Warez tools                               DEATH, 2010 |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:juarez)
+(in-package #:juarez.utils)
 
 
 ;;;; General-purpose utilities
