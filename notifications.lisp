@@ -149,7 +149,7 @@
 
 (setf (find-message-parser "rpcResult")
       (lambda (json)
-        (with-alist-values ((id error result) json :keywords t)
+        (with-alist-values ((id error result) json)
           (make-instance 'result-message :id id :error error :result result))))
 
 (defclass error-message (message)
@@ -167,7 +167,7 @@
 
 (setf (find-message-parser "notification")
       (lambda (json)
-        (with-alist-values ((time type content) json :keywords t)
+        (with-alist-values ((time type content) json)
           (make-instance 'notification-message :time time :type type :content content))))
 
 (defun encode-json-to-message (json)

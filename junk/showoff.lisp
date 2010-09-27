@@ -20,9 +20,9 @@
   (let ((search-results '()))
     (dolist (site-results (with-warehouse-rpc-client ()
                             (rpc-call "search" text)))
-      (with-alist-values ((site results) site-results :keywords t)
+      (with-alist-values ((site results) site-results)
         (dolist (result results)
-          (with-alist-values ((name section date id size) result :keywords t)
+          (with-alist-values ((name section date id size) result)
             (push (make-search-result
                    :site site
                    :name name

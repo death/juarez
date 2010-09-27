@@ -29,7 +29,8 @@
         collect (parse-integer string :start s :end e)))
 
 (defun release-facts (id release site)
-  (with-alist-values ((name release-date release-size section-name site-id) release)
+  (with-alist-values ((name release-date release-size section-name site-id) release
+                      :keywords nil)
     `((title ,id ,(getf name :title))
       (raw-name ,id ,(getf name :raw-name))
       (group ,id ,(intern (string-upcase (getf name :group)) :keyword))

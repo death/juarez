@@ -26,7 +26,7 @@
          (or (not whole-string)
              (null (read-char in nil nil))))))
 
-(defmacro with-alist-values ((keys alist &key keywords) &body forms)
+(defmacro with-alist-values ((keys alist &key (keywords t)) &body forms)
   (once-only (alist)
     `(let ,(loop for key in keys
                  collect `(,key (cdr (assoc ',(if keywords
