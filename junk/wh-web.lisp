@@ -22,38 +22,43 @@
   (:import-from #:juarez.utils
                 #:with-alist-values #:approximate-size)
   (:import-from #:yaclml
+                #:*yaclml-indent*
                 #:with-yaclml-output-to-string)
   (:import-from #:ps
                 #:ps #:@ #:new #:defpsmacro)
   (:import-from #:bt
-                #:make-lock #:make-thread #:with-lock-held #:join-thread)
+                #:make-thread #:join-thread)
   (:import-from #:sb-concurrency
                 #:make-mailbox #:receive-message-no-hang
-                #:receive-message #:send-message)
+                #:receive-message #:receive-pending-messages #:send-message)
   (:import-from #:alexandria
-                #:assoc-value #:destructuring-case))
+                #:assoc-value #:destructuring-case #:when-let #:appendf))
 
 (in-package #:wh-web)
 
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (setf *yaclml-indent* nil))
+
 (defclass wh-server (acceptor)
-  ((messages :initform '())
-   (messages-lock :initform (make-lock "messages lock"))
-   (client-inbox :initform (make-mailbox))
-   (client-outbox :initform (make-mailbox))
-   (client-thread)))
+  ((client-inbox :initform (make-mailbox))
+   (client-outbox-search-results :initform (make-mailbox))
+   (client-outbox-notifications :initform (make-mailbox))
+   (client-thread)
+   (all-messages :initform '())))
 
 (defmethod initialize-instance :after ((server wh-server) &key)
   (with-slots (client-thread) server
     (setf client-thread (make-thread (client-thread-function server)))))
 
 (defun client-thread-function (server)
-  (with-slots (client-inbox client-outbox) server
+  (with-slots (client-inbox client-outbox-search-results client-outbox-notifications) server
     (lambda ()
       (block thread-function
         (loop
          (with-open-notification-client (client (make-warehouse-notification-client))
            (add-notification-watcher (lambda (notification)
-                                       (add-message (notification-message notification) server))
+                                       (send-message client-outbox-notifications
+                                                     (notification-message notification)))
                                      client)
            (handler-case
                (loop
@@ -67,13 +72,13 @@
                             ((:die)
                              (return-from thread-function))
                             ((:search query)
-                             (send-message client-outbox (search-release-re client query)))
+                             (send-message client-outbox-search-results (search-release-re client query)))
                             ((:queue site id)
                              (download-torrent-by-id client site id))))))
                   (notification-client-method-error (e)
-                    (add-message (princ-to-string e) server))))
+                    (send-message client-outbox-notifications (princ-to-string e)))))
              (error (e)
-               (add-message (princ-to-string e) server)))))))))
+               (send-message client-outbox-notifications (princ-to-string e))))))))))
     
 (defun notification-message (notification)
   (outs (:cc (notification-type notification)) " "
@@ -101,16 +106,6 @@
       (join-thread client-thread)
       (setf client-thread nil))))
 
-(defun add-message (string &optional (server *acceptor*))
-  (with-slots (messages messages-lock) server
-    (with-lock-held (messages-lock)
-      (push string messages))))
-
-(defun server-messages (&optional (server *acceptor*))
-  (with-slots (messages messages-lock) server
-    (with-lock-held (messages-lock)
-      (reverse messages))))
-
 (defun queue-release (&optional (server *acceptor*))
   (let ((id (parse-integer (get-parameter "id")))
         (site (get-parameter "site")))
@@ -118,10 +113,10 @@
     (client-command server :queue site id)))
 
 (defun search-results (&optional (server *acceptor*))
-  (with-slots (client-outbox) server
+  (with-slots (client-outbox-search-results) server
     (client-command server :search (get-parameter "q"))
     (search-results-html
-     (receive-message client-outbox))))
+     (receive-message client-outbox-search-results))))
 
 (defun search-results-html (results)
   (with-yaclml-output-to-string
@@ -147,15 +142,25 @@
                                 (<:td (<:button :type "button" :onclick (outs "queueRelease('" site "', " id ")") "Queue")))))))))))))
                                                              
 (defun periodic (&optional (server *acceptor*))
-  (with-yaclml-output-to-string
-    (<:p
-     (dolist (message (server-messages server))
-       (<:ah message)
-       (<:br)))))
+  (with-slots (client-outbox-notifications all-messages) server
+    (when-let (pending (receive-pending-messages client-outbox-notifications))
+      (appendf all-messages pending))
+    (with-yaclml-output-to-string
+      (<:p
+       (dolist (message all-messages)
+         (<:ah message)
+         (<:br))))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defpsmacro with-ajax-request ((var url) &body forms)
-    `(call-with-ajax-request ,url (lambda (,var) ,@forms))))
+  (defpsmacro with-ajax-request ((var base-url &rest args) &body forms)
+    `(call-with-ajax-request
+      ,(cond ((null args) base-url)
+             (t (list* '+ base-url
+                       (loop for prefix = "?" then "&"
+                             for (name val-form) on args by #'cddr
+                             collect (outs prefix name "=")
+                             collect val-form))))
+      (lambda (,var) ,@forms))))
 
 (defun main-js ()
   (ps (defun call-with-ajax-request (url fn)
@@ -167,20 +172,22 @@
                     (funcall fn req))))
           ((@ req open) "GET" url t)
           ((@ req send))))
+      (defun get-document-element (id)
+        ((@ document get-element-by-id) id))
       (defun ajax-setup ()
         (set-interval #'ajax-request 1000))
       (defun ajax-request ()
         (with-ajax-request (req "periodic")
-          (setf (@ ((@ document get-element-by-id) "periodic") inner-h-t-m-l)
+          (setf (@ (get-document-element "periodic") inner-h-t-m-l)
                 (@ req response-text))))
-      (setf (@ window onload) #'ajax-setup)
       (defun perform-search ()
-        (with-ajax-request (req (+ "search-results?q=" (@ ((@ document get-element-by-id) "search-query") value)))
-          (setf (@ ((@ document get-element-by-id) "search-results") inner-h-t-m-l)
+        (with-ajax-request (req "search-results" "q" (@ (get-document-element "search-query") value))
+          (setf (@ (get-document-element "search-results") inner-h-t-m-l)
                 (@ req response-text))))
       (defun queue-release (site id)
-        (with-ajax-request (req (+ "queue-release?site=" site "&id=" id))
-          (values)))))
+        (with-ajax-request (req "queue-release" "site" site "id" id)
+          (values)))
+      (setf (@ window onload) #'ajax-setup)))
 
 (defun main ()
   (with-yaclml-output-to-string
