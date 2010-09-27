@@ -21,7 +21,7 @@
 (defgeneric add-notification-watcher (watcher notification-client))
 (defgeneric remove-notification-watcher (watcher notification-client))
 
-(defgeneric notification-event-dispatch (notification-client))
+(defgeneric notification-event-dispatch (notification-client &key wait))
 (defgeneric dispatch-notification (notification notification-client))
 
 (defgeneric notification-client-rpc (id method-json notification-client))
@@ -58,7 +58,8 @@
                                          :certificate (notification-client-ssl-certificate client)
                                          :close-callback (let ((socket socket))
                                                            (lambda () (close socket)))))
-           (setf socket nil))
+           (setf socket nil)
+           client)
       (when socket
         (close socket)))))
 
@@ -73,8 +74,9 @@
 (defmethod remove-notification-watcher ((watcher function) (client basic-notification-client))
   (deletef (notification-client-watchers client) watcher))
 
-(defmethod notification-event-dispatch ((client basic-notification-client))
-  (dispatch-notification (wait-for-notification client) client))
+(defmethod notification-event-dispatch ((client basic-notification-client) &key wait)
+  (when (or wait (listen (notification-client-connection client)))
+    (dispatch-notification (wait-for-notification client) client)))
 
 (defun wait-for-notification (client)
   (loop for message = (read-message (notification-client-connection client))

@@ -15,4 +15,4 @@
   (with-open-notification-client (client (make-warehouse-notification-client))
     (add-notification-watcher #'show-notification client)
     (print 'ready)
-    (loop (notification-event-dispatch client))))
+    (loop (notification-event-dispatch client :wait t))))
