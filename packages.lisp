@@ -142,9 +142,8 @@
    #:notification-client-error
    #:notification-client-error-message
    #:notification-client-method-error
-   #:get-new-notifications
+   #:get-notifications
    #:get-notifications-count
-   #:get-old-notifications
    #:generate-notification
    #:get-torrents
    #:download-torrent-by-id

@@ -222,9 +222,8 @@
                             (cons 'params (vector ,@arglist)))))
           ,client)))))
 
-(define-rpc-method get-new-notifications () "getNewNotifications")
+(define-rpc-method get-notifications (offset count) "getNotifications")
 (define-rpc-method get-notifications-count () "getNotificationCount")
-(define-rpc-method get-old-notifications (start end) "getOldNotifications")
 (define-rpc-method generate-notification (type content) "generateNotification")
 (define-rpc-method get-torrents () "getTorrents")
 (define-rpc-method download-torrent-by-id (site id) "downloadTorrentById")
