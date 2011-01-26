@@ -16,7 +16,8 @@
    #:with-alist-values
    #:alist-values-lister
    #:approximate-size
-   #:format-date))
+   #:format-date
+   #:eval-always))
 
 (defpackage #:juarez.prolog
   (:use #:cl)

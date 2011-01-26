@@ -63,3 +63,7 @@
          (:d hour :width 2 :pad-char #\0) ":"
          (:d minute :width 2 :pad-char #\0) ":"
          (:d second :width 2 :pad-char #\0))))
+
+(defmacro eval-always (&body forms)
+  `(eval-when (:compile-toplevel :load-toplevel :execute)
+     ,@forms))
