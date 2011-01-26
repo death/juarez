@@ -127,7 +127,8 @@
   (make-hash-table :test 'equal))
 
 (defun find-message-parser (message-type)
-  (gethash message-type *message-parsers*))
+  (or (gethash message-type *message-parsers*)
+      (gethash :generic *message-parsers*)))
 
 (defun (setf find-message-parser) (message-parser message-type)
   (setf (gethash message-type *message-parsers*) message-parser))
@@ -135,41 +136,42 @@
 (defclass message ()
   ())
 
-(defclass generic-message (message)
-  ((json :initarg :json :reader message-json)))
-
 (defun parse-message (message-json)
-  (let ((type (assoc-value message-json :type)))
-    (if-let (parser (find-message-parser type))
-      (funcall parser (assoc-value message-json :data))
-      (make-instance 'generic-message :json message-json))))
+  (with-alist-values ((type data) message-json)
+    (funcall (find-message-parser type) data)))
 
-(defclass result-message (message)
-  ((id :initarg :id :reader message-id)
-   (error :initarg :error :reader message-error)
-   (result :initarg :result :reader message-result)))
+(defmacro define-message (message-type (&rest slot-names) class-name
+                          &key (reader-conc-name "MESSAGE-"))
+  (multiple-value-bind (vars json-var) (parse-varlist slot-names)
+    (let ((initargs (mapcar #'make-keyword vars))
+          (readers (loop for var in vars
+                         collect (format-symbol t "~A~A" reader-conc-name var))))
+      `(progn
+         (defclass ,class-name (message)
+           ,(mapcar (lambda (var initarg reader)
+                      (list var :initarg initarg :reader reader))
+                    vars initargs readers))
+         (setf (find-message-parser ,message-type)
+               (lambda (,json-var)
+                 (with-alist-values (,(remove json-var vars) ,json-var)
+                   (make-instance ',class-name
+                                  ,@(mapcan #'list initargs vars)))))))))
 
-(setf (find-message-parser "rpcResult")
-      (lambda (json)
-        (with-alist-values ((id error result) json)
-          (make-instance 'result-message :id id :error error :result result))))
+(eval-always
+  (defun parse-varlist (varlist)
+    (let ((json-var (gensym)))
+      (values (loop while varlist
+                    collect (let ((x (pop varlist)))
+                              (if (eq x '&json)
+                                  (setf json-var (pop varlist))
+                                  x)))
+              json-var))))
 
-(defclass error-message (message)
-  ((error :initarg :error :reader message-error)))
-
-(setf (find-message-parser "error")
-      (lambda (error)
-        (make-instance 'error-message :error error)))
-
-(defclass notification-message (message)
-  ((time :initarg :time :reader notification-time)
-   (type :initarg :type :reader notification-type)
-   (content :initarg :content :reader notification-content)))
-
-(setf (find-message-parser "notification")
-      (lambda (json)
-        (with-alist-values ((time type content) json)
-          (make-instance 'notification-message :time time :type type :content content))))
+(define-message :generic (&json json) generic-message)
+(define-message "rpcResult" (id error result) result-message)
+(define-message "error" (&json error) error-message)
+(define-message "notification" (time type content) notification-message
+                :reader-conc-name "NOTIFICATION-")
 
 (defun encode-json-to-message (json)
   (let ((string (encode-json-to-string json)))

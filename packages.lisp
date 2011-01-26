@@ -114,12 +114,13 @@
 
 (defpackage #:juarez.notifications
   (:use #:cl)
-  (:import-from #:alexandria #:deletef #:assoc-value #:if-let #:with-gensyms)
+  (:import-from #:alexandria #:deletef #:if-let #:with-gensyms #:make-keyword
+                #:format-symbol)
   (:import-from #:iolib #:make-socket #:connect #:lookup-hostname #:fd-of)
   (:import-from #:cl+ssl #:make-ssl-client-stream)
   (:import-from #:json #:decode-json-from-string #:encode-json-to-string)
   (:import-from #:babel #:octets-to-string #:string-to-octets #:string-size-in-octets)
-  (:import-from #:juarez.utils #:with-alist-values)
+  (:import-from #:juarez.utils #:with-alist-values #:eval-always)
   (:export
    #:notification-client
    #:notification-client-host
