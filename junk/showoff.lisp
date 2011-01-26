@@ -18,8 +18,7 @@
 
 (defun warehouse-search (text)
   (let ((search-results '()))
-    (dolist (site-results (with-warehouse-rpc-client ()
-                            (rpc-call "search" text)))
+    (dolist (site-results (get-site-results text))
       (with-alist-values ((site results) site-results)
         (dolist (result results)
           (with-alist-values ((name section date id size) result)
@@ -28,10 +27,14 @@
                    :name name
                    :section section
                    :size (princ-to-string size)
-                   :date date
+                   :date (princ-to-string date)
                    :id (princ-to-string id))
                   search-results)))))
     (nreverse search-results)))
+
+(defun get-site-results (query)
+  (with-open-notification-client (client (make-warehouse-notification-client))
+    (search-release-re client query)))
 
 (defun store-remove-all-items (store)
   (with-slots ((items gtk::items)) store
