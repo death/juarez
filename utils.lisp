@@ -27,13 +27,15 @@
              (null (read-char in nil nil))))))
 
 (defmacro with-alist-values ((keys alist &key (keywords t)) &body forms)
-  (once-only (alist)
-    `(let ,(loop for key in keys
-                 collect `(,key (cdr (assoc ',(if keywords
-                                                  (as-keyword key)
-                                                  key)
-                                            ,alist))))
-       ,@forms)))
+  (with-gensyms (alist-var)
+    `(let ((,alist-var ,alist))
+       (declare (ignorable ,alist-var))
+       (let ,(loop for key in keys
+                   collect `(,key (cdr (assoc ',(if keywords
+                                                    (as-keyword key)
+                                                    key)
+                                              ,alist-var))))
+         ,@forms))))
 
 (defun alist-values-lister (&rest keys)
   (lambda (alist)
