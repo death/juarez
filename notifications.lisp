@@ -103,21 +103,22 @@
     (funcall watcher notification)))
 
 (defun read-message (stream)
-  (flet ((consume () (read-byte stream)))
-    (let ((size 0))
-      (tagbody
-       read-size
-         (let ((octet (consume)))
-           (case octet
-             ((#x30 #x31 #x32 #x33 #x34 #x35 #x36 #x37 #x38 #x39)
-              (setf size (+ (* size 10) (- octet #x30))))
-             (#x3A (go read-payload))))
-         (go read-size)
-       read-payload
-         (let ((payload (make-array size :element-type '(unsigned-byte 8))))
-           (read-sequence payload stream)
-           (return-from read-message
-             (parse-message (decode-message payload))))))))
+  (parse-message
+   (decode-message
+    (read-n-octets (read-size stream) stream))))
+
+(defun read-size (stream)
+  (let ((size 0))
+    (loop for octet = (read-byte stream)
+          until (= octet #x3A)
+          when (<= #x30 octet #x39)
+          do (setf size (+ (* size 10) (- octet #x30))))
+    size))
+
+(defun read-n-octets (n stream)
+  (let ((octets (make-array n :element-type '(unsigned-byte 8))))
+    (read-sequence octets stream)
+    octets))
 
 (defun decode-message (octets)
   (decode-json-from-string
