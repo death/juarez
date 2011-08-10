@@ -158,4 +158,5 @@
   (:use #:cl #:constantia #:alexandria #:split-sequence #:juarez.utils #:juarez.triples #:juarez.rpc #:juarez.notifications)
   (:export
    #:release-plist
-   #:relunp))
+   #:relunp
+   #:delete-blacklisted))
