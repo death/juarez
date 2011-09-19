@@ -106,6 +106,9 @@
       (join-thread client-thread)
       (setf client-thread nil))))
 
+(defun add-message (string server)
+  (send-message (slot-value server 'client-outbox-notifications) string))
+
 (defun queue-release (&optional (server *acceptor*))
   (let ((id (parse-integer (get-parameter "id")))
         (site (get-parameter "site")))
