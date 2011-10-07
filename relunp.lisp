@@ -135,7 +135,7 @@
     (list
      (some (lambda (pattern) (match-pathname pathname pattern)) pattern))))
 
-(defun directory-contents (directory &key (schema *pathname-schema*) (contents (make-hash-table)))                           
+(defun directory-contents (directory &key (schema *pathname-schema*) (contents (make-hash-table)))
   (fad:walk-directory directory
                       (lambda (pathname)
                         (when-let (entry (assoc pathname schema :test #'match-pathname))
