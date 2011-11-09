@@ -78,12 +78,12 @@
                                       :close nil
                                       :stream (rpc-client-stream client))))
               (t (multiple-value-bind (response http-code headers uri stream)
-                     (let ((drakma::*ssl-certificate* (rpc-client-certificate client))
-                           (drakma::*ssl-key* (rpc-client-key client)))
-                       (drakma:http-request (rpc-client-uri client)
-                                            :method :post
-                                            :content content
-                                            :close nil))
+                     (drakma:http-request (rpc-client-uri client)
+                                          :certificate (rpc-client-certificate client)
+                                          :key (rpc-client-key client)
+                                          :method :post
+                                          :content content
+                                          :close nil)
                    (declare (ignore headers uri))
                    (setf (rpc-client-stream client) stream)
                    (values response http-code)))))
