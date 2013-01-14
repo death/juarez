@@ -52,7 +52,22 @@
 (defpackage #:juarez.rpc
   (:use #:cl)
   (:export
-   #:siyobik-call))
+   #:*jsonrpc-version*
+   #:*jsonrpc-id*
+   #:*jsonrpc-certificate*
+   #:*jsonrpc-key*
+   #:*jsonrpc-uri*
+   #:jsonrpc-error
+   #:jsonrpc-http-error
+   #:jsonrpc-http-error-code
+   #:jsonrpc-id-mismatch
+   #:jsonrpc-id-mismatch-expected-id
+   #:jsonrpc-id-mismatch-actual-id
+   #:jsonrpc-method-error
+   #:jsonrpc-method-error-info
+   #:jsonrpc-call
+   #:jsonrpc-multicall
+   #:jsonrpc-set-siyobik))
 
 (defpackage #:juarez
   (:use #:cl #:constantia #:alexandria #:split-sequence #:juarez.triples #:juarez.rpc)
