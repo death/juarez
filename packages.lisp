@@ -49,8 +49,13 @@
    #:do-query
    #:list-store-component))
 
+(defpackage #:juarez.rpc
+  (:use #:cl)
+  (:export
+   #:siyobik-call))
+
 (defpackage #:juarez
-  (:use #:cl #:constantia #:alexandria #:split-sequence #:juarez.triples)
+  (:use #:cl #:constantia #:alexandria #:split-sequence #:juarez.triples #:juarez.rpc)
   (:export
    #:release-plist
    #:relunp))

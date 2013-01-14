@@ -14,8 +14,10 @@
   :depends-on (#:alexandria
                #:arnesi
                #:cl-fad
+               #:cl-json
                #:cl-ppcre
                #:constantia
+               #:drakma
                #:split-sequence)
   :serial t
   :components
@@ -25,4 +27,5 @@
    (:file "prolog")
    (:file "triples")
    (:file "database")
+   (:file "rpc")
    (:file "relunp")))
