@@ -16,11 +16,10 @@
     ("Date" search-result-date)
     ("ID" search-result-id)))
 
-(jsonrpc-set-warehouse)
-
 (defun warehouse-search (text)
   (let ((search-results '()))
-    (dolist (site-results (jsonrpc-call "search" text))
+    (dolist (site-results (with-warehouse-rpc-client ()
+                            (rpc-call "search" text)))
       (with-alist-values ((site results) site-results :keywords t)
         (dolist (result results)
           (with-alist-values ((name section date id size) result :keywords t)
