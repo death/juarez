@@ -52,22 +52,52 @@
 (defpackage #:juarez.rpc
   (:use #:cl)
   (:export
-   #:*jsonrpc-version*
-   #:*jsonrpc-id*
-   #:*jsonrpc-certificate*
-   #:*jsonrpc-key*
-   #:*jsonrpc-uri*
-   #:jsonrpc-error
-   #:jsonrpc-http-error
-   #:jsonrpc-http-error-code
-   #:jsonrpc-id-mismatch
-   #:jsonrpc-id-mismatch-expected-id
-   #:jsonrpc-id-mismatch-actual-id
-   #:jsonrpc-method-error
-   #:jsonrpc-method-error-info
-   #:jsonrpc-call
-   #:jsonrpc-multicall
-   #:jsonrpc-set-siyobik))
+   ;; Error stuff
+   #:rpc-client-error
+   #:rpc-client-error-client
+   #:rpc-client-http-error
+   #:rpc-client-http-error-code
+   #:rpc-client-id-mismatch
+   #:rpc-client-id-mismatch-actual-id
+   #:rpc-client-id-mismatch-expected-id
+   #:rpc-client-call-error
+   #:rpc-client-call-error-info
+   ;; Calls
+   #:rpc-call
+   #:rpc-call-method-name
+   #:rpc-call-method-args
+   ;; Client protocol
+   #:rpc-client
+   #:rpc-request-response
+   #:rpc-disconnect
+   #:rpc-encode-call
+   #:rpc-encode-multicall
+   #:rpc-decode-call-response
+   #:rpc-decode-multicall-response
+   #:rpc-handle-call-response
+   #:rpc-handle-multicall-response
+   #:rpc-perform-call
+   #:rpc-perform-multicall
+   ;; HTTP transport mixin
+   #:rpc-client-http-mixin
+   #:rpc-client-certificate
+   #:rpc-client-key
+   #:rpc-client-uri
+   ;; JSON RPC mixin
+   #:rpc-client-json-mixin
+   ;; Retryable requests mixin
+   #:rpc-client-retrying-mixin
+   #:rpc-retry-request
+   ;; Basic client implementation
+   #:basic-rpc-client
+   ;; Client interface
+   #:*rpc-client*
+   #:rpc-call
+   #:rpc-multicall
+   #:with-rpc-client
+   ;; Warehouse client
+   #:warehouse-rpc-client
+   #:with-warehouse-rpc-client))
 
 (defpackage #:juarez
   (:use #:cl #:constantia #:alexandria #:split-sequence #:juarez.triples #:juarez.rpc)

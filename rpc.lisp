@@ -5,115 +5,238 @@
 (in-package #:juarez.rpc)
 
 
-;;;; JSON RPC API to qto's warehouse
+;;;; Error condition types
 
-(defparameter *jsonrpc-version* "2.0"
-  "A string specifying the version of the JSONRPC protocol.")
+(define-condition rpc-client-error (error)
+  ((client :initarg :client :reader rpc-client-error-client)))
 
-(defvar *jsonrpc-id* 0
-  "An integer specifying the next ID to be used.")
+(define-condition rpc-client-http-error (rpc-client-error)
+  ((code :initarg :code :reader rpc-client-http-error-code)))
 
-(defvar *jsonrpc-certificate* nil
-  "The path to a PEM file to use for SSL certificate.")
+(define-condition rpc-client-id-mismatch (rpc-client-error)
+  ((actual-id :initarg :actual-id :reader rpc-client-id-mismatch-actual-id)
+   (expected-id :initarg :expected-id :reader rpc-client-id-mismatch-expected-id)))
 
-(defvar *jsonrpc-key* nil
-  "The path to a PEM file to use for SSL key.")
+(define-condition rpc-client-call-error (rpc-client-error)
+  ((info :initarg :info :reader rpc-client-call-error-info)))
 
-(defvar *jsonrpc-uri* nil
-  "A URI string for the JSONRPC HTTP service.")
+
+;;;; Calls
 
-(define-condition jsonrpc-error (error)
+(defclass rpc-call ()
+  ((method-name :initarg :method-name :accessor rpc-call-method-name)
+   (method-args :initarg :method-args :accessor rpc-call-method-args)))
+
+
+;;;; Client protocol
+
+(defclass rpc-client ()
   ())
 
-(define-condition jsonrpc-http-error (jsonrpc-error)
-  ((code :initarg :code :reader jsonrpc-http-error-code))
-  (:report report-jsonrpc-http-error))
+(defgeneric rpc-request-response (rpc-client content))
+(defgeneric rpc-disconnect (rpc-client))
+(defgeneric rpc-encode-call (rpc-client call id))
+(defgeneric rpc-encode-multicall (rpc-client calls ids))
+(defgeneric rpc-decode-call-response (rpc-client response id))
+(defgeneric rpc-decode-multicall-response (rpc-client response ids))
+(defgeneric rpc-handle-call-response (rpc-client type value))
+(defgeneric rpc-handle-multicall-response (rpc-client responses))
+(defgeneric rpc-perform-call (rpc-client call))
+(defgeneric rpc-perform-multicall (rpc-client calls))
 
-(defun report-jsonrpc-http-error (condition stream)
-  (format stream "JSONRPC HTTP Error: ~A."
-          (jsonrpc-http-error-code condition)))
+
+;;;; HTTP transport mixin
 
-(define-condition jsonrpc-id-mismatch (jsonrpc-error)
-  ((expected-id :initarg :expected-id :reader jsonrpc-id-mismatch-expected-id)
-   (actual-id :initarg :actual-id :reader jsonrpc-id-mismatch-actual-id))
-  (:report report-jsonrpc-id-mismatch))
+(defclass rpc-client-http-mixin ()
+  ((certificate :initarg :certificate :accessor rpc-client-certificate)
+   (key :initarg :key :accessor rpc-client-key)
+   (uri :initarg :uri :accessor rpc-client-uri)
+   (stream :initform nil :accessor rpc-client-stream)))
 
-(defun report-jsonrpc-id-mismatch (condition stream)
-  (format stream "Expected JSONRPC ID ~A, but got ID ~A."
-          (jsonrpc-id-mismatch-expected-id condition)
-          (jsonrpc-id-mismatch-actual-id condition)))
+(defmethod rpc-request-response ((client rpc-client-http-mixin) content)
+  (multiple-value-bind (response http-code)
+      (let ((drakma:*text-content-types* '(("text" . nil)
+                                           ("application" . "json-rpc")))
+            (drakma:*drakma-default-external-format* :utf-8))
+        (cond ((rpc-client-stream client)
+               (handler-bind ((error (lambda (e)
+                                       (declare (ignore e))
+                                       (rpc-disconnect client))))
+                 (drakma:http-request (rpc-client-uri client)
+                                      :method :post
+                                      :content content
+                                      :close nil
+                                      :stream (rpc-client-stream client))))
+              (t (multiple-value-bind (response http-code headers uri stream)
+                     (let ((drakma::*ssl-certificate* (rpc-client-certificate client))
+                           (drakma::*ssl-key* (rpc-client-key client)))
+                       (drakma:http-request (rpc-client-uri client)
+                                            :method :post
+                                            :content content
+                                            :close nil))
+                   (declare (ignore headers uri))
+                   (setf (rpc-client-stream client) stream)
+                   (values response http-code)))))
+    (unless (eql http-code 200)
+      (error 'rpc-client-http-error :client client :code http-code))
+    response))
 
-(define-condition jsonrpc-method-error (jsonrpc-error)
-  ((info :initarg :info :reader jsonrpc-method-error-info)))
+(macrolet ((declare-disconnecting (name)
+             `(defmethod (setf ,name) :after (new-value (client rpc-client-http-mixin))
+                (rpc-disconnect client))))
+  (declare-disconnecting rpc-client-key)
+  (declare-disconnecting rpc-client-certificate)
+  (declare-disconnecting rpc-client-uri))
 
-(defun make-id ()
-  "Return a fresh ID."
-  (prog1 *jsonrpc-id*
-    (incf *jsonrpc-id*)))
+(defmethod rpc-disconnect ((client rpc-client-http-mixin))
+  (when (rpc-client-stream client)
+    (when (open-stream-p (rpc-client-stream client))
+      (close (rpc-client-stream client)))
+    (setf (rpc-client-stream client) nil)))
 
-(defun make-request (method params &optional id)
-  "Create a fresh JSONRPC request object."
-  (check-type method string)
-  (list (cons 'jsonrpc *jsonrpc-version*)
+
+;;;; JSON RPC mixin
+
+(defclass rpc-client-json-mixin ()
+  ())
+
+(defun make-call-json (call id)
+  (check-type (rpc-call-method-name call) string)
+  (list (cons 'jsonrpc "2.0")
         (cons 'id id)
-        (cons 'method method)
-        (cons 'params
-              (if (null params)
-                  #()
-                  params))))
+        (cons 'method (rpc-call-method-name call))
+        (cons 'params (if (null (rpc-call-method-args call))
+                          #()
+                          (rpc-call-method-args call)))))
 
-(defun request-over-http (json-string)
-  "Post a JSON object encoded as string and return the reply."
-  (let ((drakma::*ssl-certificate* *jsonrpc-certificate*)
-        (drakma::*ssl-key* *jsonrpc-key*)
-        (drakma:*text-content-types* '(("text" . nil)
-                                       ("application" . "json-rpc")))
-        (drakma:*drakma-default-external-format* :utf-8))
-    (multiple-value-bind (unparsed-response http-code)
-        (drakma:http-request *jsonrpc-uri* :method :post :content json-string)
-      (unless (eql http-code 200)
-        (error 'jsonrpc-http-error :code http-code))
-      unparsed-response)))
+(defmethod rpc-encode-call ((client rpc-client-json-mixin) call id)
+  (json:encode-json-to-string (make-call-json call id)))
 
-(defun handle-response (response request-id)
-  "Handle a JSON method call response, or a list of those."
-  (let ((id (cdr (assoc :id response)))
-        (error (cdr (assoc :error response)))
-        (result (cdr (assoc :result response))))
-    (cond ((and (null error) (null result))
-           (mapcar #'handle-response response request-id))
-          (t
-           (unless (eql id request-id)
-             (error 'jsonrpc-id-mismatch
-                    :expected-id request-id
-                    :actual-id id))
-           (when error
-             (error 'jsonrpc-method-error :info error))
-           result))))
-    
-(defun jsonrpc-call (method &rest params)
-  "Call the procedure designated by METHOD via JSONRPC over HTTP."
-  (let ((id (make-id)))
-    (handle-response
-     (json:decode-json-from-string
-      (request-over-http
-       (json:encode-json-to-string
-        (make-request method params id))))
-     id)))
+(defmethod rpc-encode-multicall ((client rpc-client-json-mixin) calls ids)
+  (json:encode-json-to-string (mapcar #'make-call-json calls ids)))
 
-(defun jsonrpc-multicall (calls)
-  "Multi-call the procedures designated by CALLS via JSONRPC over HTTP."
-  (let ((ids (loop for call in calls collect (make-id))))
-    (let ((requests (mapcar (lambda (call id) (make-request (car call) (cdr call) id)) calls ids)))
-      (handle-response
-       (json:decode-json-from-string
-        (request-over-http
-         (json:encode-json-to-string
-          requests)))
-       ids))))
+(defun make-call-response (client json call-id)
+  (juarez::with-alist-values ((id error result) json :keywords t)
+    (unless (eql id call-id)
+      (error 'rpc-client-id-mismatch :client client :expected-id call-id :actual-id id))
+    (if error
+        (values :error error)
+        (values :result result))))
 
-(defun jsonrpc-set-siyobik ()
-  (setf *jsonrpc-certificate* "/home/death/lisp/juarez/data/death.pem")
-  (setf *jsonrpc-key* "/home/death/lisp/juarez/data/death.pem")
-  (setf *jsonrpc-uri* "https://xxxxxxxxxxxx:6780/warehouse")
-  (values))
+(defmethod rpc-decode-call-response ((client rpc-client-json-mixin) response id)
+  (make-call-response client (json:decode-json-from-string response) id))
+
+(defmethod rpc-decode-multicall-response ((client rpc-client-json-mixin) response ids)
+  (mapcar (lambda (call-response call-id)
+            (multiple-value-list (make-call-response client call-response call-id)))
+          (json:decode-json-from-string response) ids))
+
+
+;;;; Retryable requests mixin
+
+(defclass rpc-client-retrying-mixin ()
+  ())
+
+(defmacro with-retry-restart ((restart-name format-string &rest format-arguments) &body forms)
+  (let ((block-name (gensym)))
+    `(block ,block-name
+       (loop
+        (with-simple-restart (,restart-name ,format-string ,@format-arguments)
+          (return-from ,block-name ,@forms))))))
+
+(defmethod rpc-request-response :around ((client rpc-client-retrying-mixin) content)
+  (with-retry-restart (rpc-retry-request "Retry RPC request.")
+    (call-next-method)))
+
+(defun rpc-retry-request (&optional condition)
+  (let ((restart (find-restart 'rpc-retry-request condition)))
+    (when restart
+      (invoke-restart restart))))
+
+
+;;;; Basic client implementation
+
+(defclass basic-rpc-client (rpc-client)
+  ((next-request-id :initform 0 :accessor rpc-client-next-request-id)))
+
+(defun make-id (client)
+  (prog1 (rpc-client-next-request-id client)
+    (incf (rpc-client-next-request-id client))))
+
+(defmethod rpc-handle-call-response ((client basic-rpc-client) (type (eql :error)) value)
+  (error 'rpc-client-call-error :client client :info value))
+
+(defmethod rpc-handle-call-response ((client basic-rpc-client) (type (eql :result)) value)
+  value)
+
+(defmethod rpc-handle-multicall-response ((client basic-rpc-client) responses)
+  (loop for (type value) in responses
+        collect (rpc-handle-call-response client type value)))
+
+(defmethod rpc-perform-call ((client basic-rpc-client) call)
+  (let ((id (make-id client)))
+    (multiple-value-call #'rpc-handle-call-response
+      client
+      (rpc-decode-call-response client (rpc-request-response client (rpc-encode-call client call id)) id))))
+
+(defmethod rpc-perform-multicall ((client basic-rpc-client) calls)
+  (let ((ids (loop for call in calls collect (make-id client))))
+    (rpc-handle-multicall-response
+     client
+     (rpc-decode-multicall-response client (rpc-request-response client (rpc-encode-multicall client calls ids)) ids))))
+
+
+;;;; Client interface
+
+(defvar *rpc-client*)
+
+(defun make-call-form (spec)
+  (destructuring-bind (method-name &rest method-args) spec
+    `(make-instance 'rpc-call
+                    :method-name ,method-name
+                    :method-args (list ,@method-args))))
+
+(defmacro rpc-call (&rest args)
+  (when (null args)
+    (error "Malformed call form."))
+  (let ((client-form (if (and (consp (car args))
+                              (eq :client (caar args)))
+                         (cadr (pop args))
+                         '*rpc-client*)))
+    `(rpc-perform-call ,client-form ,(make-call-form args))))
+
+(defmacro rpc-multicall (&rest calls)
+  (when (null calls)
+    (error "Malformed multicall form."))
+  (let ((client-form (if (and (consp (car calls))
+                              (eq :client (caar calls)))
+                         (cadr (pop calls))
+                         '*rpc-client*)))
+    `(rpc-perform-multicall ,client-form
+                            (list ,@(mapcar #'make-call-form calls)))))
+
+(defmacro with-rpc-client ((var class-name &rest options) &body forms)
+  `(let ((,var (make-instance ,class-name ,@options)))
+     (unwind-protect (progn ,@forms)
+       (rpc-disconnect ,var))))
+
+
+;;;; Warehouse client
+
+(defclass warehouse-rpc-client (rpc-client-retrying-mixin
+                                rpc-client-json-mixin
+                                rpc-client-http-mixin
+                                basic-rpc-client)
+  ())
+
+(defparameter *warehouse-uri* "https://xxxxxxxxxxxx:6780/warehouse")
+(defparameter *warehouse-key* "/home/death/lisp/juarez/data/death.pem")
+(defparameter *warehouse-certificate* "/home/death/lisp/juarez/data/death.pem")
+
+(defmacro with-warehouse-rpc-client ((&optional (var '*rpc-client*)
+                                                (uri '*warehouse-uri*)
+                                                (key '*warehouse-key*)
+                                                (certificate '*warehouse-certificate*))
+                                 &body forms)
+  `(with-rpc-client (,var 'warehouse-rpc-client :uri ,uri :key ,key :certificate ,certificate)
+     ,@forms))
