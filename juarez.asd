@@ -16,8 +16,10 @@
                #:cl-fad
                #:cl-json
                #:cl-ppcre
+               #:cl+ssl
                #:constantia
                #:drakma
+               #:iolib
                #:split-sequence)
   :serial t
   :components
@@ -28,4 +30,5 @@
    (:file "triples")
    (:file "database")
    (:file "rpc")
+   (:file "notifications")
    (:file "relunp")))

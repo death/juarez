@@ -99,8 +99,41 @@
    #:warehouse-rpc-client
    #:with-warehouse-rpc-client))
 
+(defpackage #:juarez.notifications
+  (:use #:cl)
+  (:import-from #:alexandria #:deletef #:assoc-value #:if-let #:with-gensyms)
+  (:import-from #:iolib #:make-socket #:connect #:lookup-hostname #:fd-of)
+  (:import-from #:cl+ssl #:make-ssl-client-stream)
+  (:import-from #:json #:decode-json-from-string #:encode-json-to-string)
+  (:import-from #:babel #:octets-to-string #:string-to-octets #:string-size-in-octets)
+  (:export
+   #:notification-client
+   #:notification-client-host
+   #:notification-client-port
+   #:notification-client-ssl-key
+   #:notification-client-ssl-certificate
+   #:open-notification-client
+   #:close-notification-client
+   #:add-notification-watcher
+   #:remove-notification-watcher
+   #:notification-event-dispatch
+   #:dispatch-notification
+   #:notification-client-rpc
+   #:grab-notification-client-rpc-id
+   #:with-open-notification-client
+   #:basic-notification-client
+   #:notification-message
+   #:notification-time
+   #:notification-type
+   #:notification-content
+   #:get-new-notifications
+   #:get-notifications-count
+   #:get-old-notifications
+   #:generate-notification
+   #:make-warehouse-notification-client))
+  
 (defpackage #:juarez
-  (:use #:cl #:constantia #:alexandria #:split-sequence #:juarez.triples #:juarez.rpc)
+  (:use #:cl #:constantia #:alexandria #:split-sequence #:juarez.triples #:juarez.rpc #:juarez.notifications)
   (:export
    #:release-plist
    #:relunp))
