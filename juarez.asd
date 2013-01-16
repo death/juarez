@@ -19,7 +19,7 @@
                #:cl+ssl
                #:constantia
                #:drakma
-               #:iolib
+               #:usocket
                #:split-sequence)
   :serial t
   :components

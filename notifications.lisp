@@ -47,21 +47,23 @@
    (last-id :initform 0 :accessor notification-client-last-id)))
 
 (defmethod open-notification-client ((client basic-notification-client))
-  (let ((socket (make-socket)))
+  (let ((socket nil))
     (unwind-protect
          (progn
-           (connect socket (lookup-hostname (notification-client-host client))
-                    :port (notification-client-port client))
+           (setf socket (socket-connect (notification-client-host client)
+                                        (notification-client-port client)
+                                        :element-type '(unsigned-byte 8)))
            (setf (notification-client-connection client)
-                 (make-ssl-client-stream (fd-of socket)
+                 (make-ssl-client-stream (socket-stream socket)
                                          :key (notification-client-ssl-key client)
                                          :certificate (notification-client-ssl-certificate client)
                                          :close-callback (let ((socket socket))
-                                                           (lambda () (close socket)))))
+                                                           (lambda ()
+                                                             (socket-close socket)))))
            (setf socket nil)
            client)
       (when socket
-        (close socket)))))
+        (socket-close socket)))))
 
 (defmethod close-notification-client ((client basic-notification-client))
   (when (notification-client-connection client)
